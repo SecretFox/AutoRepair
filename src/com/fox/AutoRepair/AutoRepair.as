@@ -36,6 +36,13 @@ class com.fox.AutoRepair.AutoRepair{
 		player = new Character(CharacterBase.GetClientCharID());
 	}
 	
+	/* 
+	   Yeah,not exactly on "death". Reviving sends different signal depending on location,
+	   Dungeon auto resurrect you at the well, open world anima forms you at a well,and mission instances
+	   resurrect you at the entrance or checkpoint. I think all of these sent different signals?
+	   SignalCharacterTeleported seemed like the most reliable way,eventhough it will misfire a lot.
+	   Ill have to investigate the signals more.
+	*/
 	public function RegisterSignal(){
 		player.SignalCharacterTeleported.Connect(Revived, this);
 	}
