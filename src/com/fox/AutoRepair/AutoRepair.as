@@ -40,7 +40,6 @@ class com.fox.AutoRepair.AutoRepair{
 		//teleport
 		DialogIF.SignalShowDialog.Connect(AcceptTeleportBuffer, this);
 		//lootbox
-		DialogIF.SignalShowDialog.Connect(AcceptKeyBuffer, this);
 		CharacterBase.SignalClientCharacterOfferedLootBox.Connect(OfferedLootbox, this);
 		CharacterBase.SignalClientCharacterOpenedLootBox.Connect(OpenedBox, this);
 	}
@@ -54,7 +53,6 @@ class com.fox.AutoRepair.AutoRepair{
 		//teleport
 		DialogIF.SignalShowDialog.Disconnect(AcceptTeleportBuffer, this);
 		//lootbox
-		DialogIF.SignalShowDialog.Disconnect(AcceptKeyBuffer, this);
 		CharacterBase.SignalClientCharacterOfferedLootBox.Disconnect(OfferedLootbox, this);
 		CharacterBase.SignalClientCharacterOpenedLootBox.Disconnect(OpenedBox, this);
 	}
@@ -123,13 +121,11 @@ class com.fox.AutoRepair.AutoRepair{
 	}
 
 	private function OpenBox(key){
-		clearTimeout(timeout);
-		timeout = setTimeout(Delegate.create(this, Setbought), 1000); // used to tell box was opened
 		CharacterBase.SendLootBoxReply(true, key);
 	}
 	
 	private function OpenedBox(){
-		if (AutoChest.GetValue() && timeout){
+		if (AutoChest.GetValue()){
 			LootBox.SetValue(false);
 		}
 	}
@@ -147,6 +143,7 @@ class com.fox.AutoRepair.AutoRepair{
 					}
 					else {
 						LootBox.SetValue(false);
+						return;
 					}
 				}
 				// Lair 
@@ -157,6 +154,7 @@ class com.fox.AutoRepair.AutoRepair{
 					}
 					else {
 						LootBox.SetValue(false);
+						return;
 					}
 				}
 				// Scenario
@@ -167,6 +165,7 @@ class com.fox.AutoRepair.AutoRepair{
 					}
 					else {
 						LootBox.SetValue(false);
+						return;
 					}
 				}
 			}
@@ -177,47 +176,5 @@ class com.fox.AutoRepair.AutoRepair{
 				OpenBox(0);
 			}
 		}
-	}
-	
-	private function Setbought(){
-		timeout = undefined;
-	}
-
-	// Some delay for KeyConfirm mod
-	private function AcceptKeyBuffer(dialog){
-		if (AutoChest.GetValue()){
-			clearTimeout(buffer);
-			buffer = setTimeout(Delegate.create(this, AcceptKey), 25, dialog);
-		}
-	}
-	// 56146837 Dungeon
-	// 32891557 lair
-	// 226452453 Scenario
-	private function AcceptKey(dialog){
-		// Already bought
-		if (timeout){
-			return;
-		}
-		var safetyCheck = LDBFormat.LDBGetText(100, 56146837).split("%")[0];
-		if (dialog["m_Message"].toString().indexOf(safetyCheck) == 0){
-			timeout = setTimeout(Delegate.create(this, Setbought), 1000);
-			dialog.DisconnectAllSignals();
-			dialog.Respond(0);
-			dialog.Close();
-		}
-		safetyCheck = LDBFormat.LDBGetText(100, 32891557).split("%")[0];
-		if (dialog["m_Message"].toString().indexOf(safetyCheck) == 0){
-			timeout = setTimeout(Delegate.create(this, Setbought), 1000);
-			dialog.DisconnectAllSignals();
-			dialog.Respond(0)
-			dialog.Close();
-		}
-		safetyCheck = LDBFormat.LDBGetText(100, 226452453).split("%")[0];
-		if (dialog["m_Message"].toString().indexOf(safetyCheck) == 0){
-			timeout = setTimeout(Delegate.create(this, Setbought), 1000);
-			dialog.DisconnectAllSignals();
-			dialog.Respond(0)
-			dialog.Close();
-		}
-	}
+	}	
 }
