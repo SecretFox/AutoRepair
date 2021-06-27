@@ -14,7 +14,6 @@ class com.fox.AutoRepair.AutoRepair{
 	private var LootBox:DistributedValue;
 	private var timeout;
 	private var buffer;
-	private var boughtToken:Number;
 
 	public static function main(swfRoot:MovieClip):Void{
 		var mod = new AutoRepair(swfRoot)
@@ -41,7 +40,6 @@ class com.fox.AutoRepair.AutoRepair{
 		//teleport
 		DialogIF.SignalShowDialog.Connect(AcceptTeleportBuffer, this);
 		//lootbox
-		m_Character.SignalTokenAmountChanged.Connect(TokensUpdated, this);
 		DialogIF.SignalShowDialog.Connect(AcceptKeyBuffer, this);
 		CharacterBase.SignalClientCharacterOfferedLootBox.Connect(OfferedLootbox, this);
 		CharacterBase.SignalClientCharacterOpenedLootBox.Connect(OpenedBox, this);
@@ -56,7 +54,6 @@ class com.fox.AutoRepair.AutoRepair{
 		//teleport
 		DialogIF.SignalShowDialog.Disconnect(AcceptTeleportBuffer, this);
 		//lootbox
-		m_Character.SignalTokenAmountChanged.Disconnect(TokensUpdated, this);
 		DialogIF.SignalShowDialog.Disconnect(AcceptKeyBuffer, this);
 		CharacterBase.SignalClientCharacterOfferedLootBox.Disconnect(OfferedLootbox, this);
 		CharacterBase.SignalClientCharacterOpenedLootBox.Disconnect(OpenedBox, this);
@@ -124,35 +121,7 @@ class com.fox.AutoRepair.AutoRepair{
 			}
 		}
 	}
-	
-	// bought key received?
-	private function TokensUpdated(token){
-		if (AutoChest.GetValue()){
-			if (timeout && boughtToken && 
-				(	token == _global.Enums.Token.e_Dungeon_Key ||
-					token == _global.Enums.Token.e_Lair_Key ||
-					token == _global.Enums.Token.e_Scenario_Key
-				)
-			){
-				if (boughtToken == _global.Enums.Token.e_Dungeon_Key && m_Character.GetTokens(boughtToken) > 0){
-					boughtToken = undefined;
-					OpenBox(_global.Enums.Token.e_Dungeon_Key);
-					return;
-				}
-				else if (boughtToken == _global.Enums.Token.e_Lair_Key && m_Character.GetTokens(boughtToken) > 0){
-					boughtToken = undefined;
-					OpenBox(_global.Enums.Token.e_Lair_Key);
-					return;
-				}
-				else if (boughtToken == _global.Enums.Token.e_Scenario_Key && m_Character.GetTokens(boughtToken) > 0){
-					boughtToken = undefined;
-					OpenBox(_global.Enums.Token.e_Scenario_Key);
-					return;
-				}
-			}
-		}
-	}
-	
+
 	private function OpenBox(key){
 		clearTimeout(timeout);
 		timeout = setTimeout(Delegate.create(this, Setbought), 1000); // used to tell box was opened
@@ -167,39 +136,42 @@ class com.fox.AutoRepair.AutoRepair{
 	
 	private function OfferedLootbox(items:Array, tokenTypes:Array, boxType:Array, backgroundID:Number){
 		if (AutoChest.GetValue()){
-			boughtToken = undefined;
+			
+			// Patron Chests
 			for (var i:Number = 0; i < tokenTypes.length; i++){
-				if (tokenTypes[i] == _global.Enums.Token.e_Dungeon_Key && m_Character.GetTokens(_global.Enums.Token.e_Dungeon_Key) == 0){
-					boughtToken = tokenTypes[i];
-					CharacterBase.BuyDungeonKey();
-					return;
+				// Dungeon
+				if (tokenTypes[i] == _global.Enums.Token.e_Dungeon_Key) {				
+					if ( m_Character.GetTokens(_global.Enums.Token.e_Dungeon_Key) > 0){
+						OpenBox(tokenTypes[i]);
+						return;
+					}
+					else {
+						LootBox.SetValue(false);
+					}
 				}
-				else if (tokenTypes[i] == _global.Enums.Token.e_Dungeon_Key && m_Character.GetTokens(_global.Enums.Token.e_Dungeon_Key) > 0){
-					OpenBox(tokenTypes[i]);
-					return;
+				// Lair 
+				if (tokenTypes[i] == _global.Enums.Token.e_Lair_Key) {
+					if (m_Character.GetTokens(_global.Enums.Token.e_Lair_Key) > 0){
+						OpenBox(tokenTypes[i]);
+						return;
+					}
+					else {
+						LootBox.SetValue(false);
+					}
 				}
-				
-				if (tokenTypes[i] == _global.Enums.Token.e_Lair_Key && m_Character.GetTokens(_global.Enums.Token.e_Lair_Key) == 0){
-					boughtToken = tokenTypes[i];
-					CharacterBase.BuyLairKey();
-					return;
-				}
-				else if (tokenTypes[i] == _global.Enums.Token.e_Lair_Key && m_Character.GetTokens(_global.Enums.Token.e_Lair_Key) > 0){
-					OpenBox(tokenTypes[i]);
-					return;
-				}
-				
-				if (tokenTypes[i] == _global.Enums.Token.e_Scenario_Key && m_Character.GetTokens(_global.Enums.Token.e_Scenario_Key) == 0){
-					boughtToken = tokenTypes[i];
-					CharacterBase.BuyScenarioKey();
-					return;
-				}
-				else if (tokenTypes[i] == _global.Enums.Token.e_Scenario_Key && m_Character.GetTokens(_global.Enums.Token.e_Scenario_Key) > 0){
-					OpenBox(tokenTypes[i]);
-					return;
+				// Scenario
+				if (tokenTypes[i] == _global.Enums.Token.e_Scenario_Key) {
+					if (m_Character.GetTokens(_global.Enums.Token.e_Scenario_Key) > 0){
+						OpenBox(tokenTypes[i]);
+						return;
+					}
+					else {
+						LootBox.SetValue(false);
+					}
 				}
 			}
-			// Free to open chests, should incldue free chest events
+			
+			// Free to open chests (lair, dungeon, and scenario), should incldue free chest events
 			//										  || Probably this one
 			if (!tokenTypes || tokenTypes.length == 0 || tokenTypes == 0){
 				OpenBox(0);
