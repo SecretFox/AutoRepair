@@ -1,26 +1,37 @@
 import com.GameInterface.DistributedValue;
+import com.GameInterface.Game.BuffData;
 import com.GameInterface.Game.Character;
 import com.GameInterface.Game.CharacterBase;
 import com.GameInterface.DialogIF;
+import com.GameInterface.Inventory;
+import com.GameInterface.InventoryItem;
 import com.Utils.Archive;
 import com.Utils.LDBFormat;
 import mx.utils.Delegate;
+import com.Utils.ID32;
 
 class com.fox.AutoRepair.AutoRepair{
 	private var m_Character:Character;
+	private var m_Inventory:Inventory;
 	private var AutoBuyPotions:DistributedValue;
 	private var AutoLeap:DistributedValue;
 	private var AutoChest:DistributedValue;
 	private var LootBox:DistributedValue;
-	private var timeout;
-	private var buffer;
+	private var AutoUseAnima:DistributedValue;
+	private var BuffPollingInterval:Number;
+	
+	static var POLLING_INTERVAL_SHORT:Number = 1000; // short polling interval (used when buff not present)
+	static var POLLING_INTERVAL_LONG:Number = 10000; // long polling interval (used when buff is present)
+	static var PURE_ANIMA_ITEM:Number = 9271323; // Pure Anima - Supreme Potency (item)
+	static var PURE_ANIMA_BUFF:Number = 9271325; // Pure Anima - Supreme Potency (buff)
+	static var DEATH_BUFFID:Number = 9212298; // dead buff id
 
 	public static function main(swfRoot:MovieClip):Void{
 		var mod = new AutoRepair(swfRoot)
 		swfRoot.onLoad  = function() { mod.Load(); };
 		swfRoot.onUnload  = function() { mod.Unload();};
 		swfRoot.OnModuleActivated = function(config:Archive) {mod.Activate(config)};
-		swfRoot.OnModuleDeactivated = function() {return mod.Deactivate()};
+		swfRoot.OnModuleDeactivated = function() {return mod.Deactivate()};	
 	}
 	
     public function AutoRepair(swfRoot: MovieClip){
@@ -28,15 +39,18 @@ class com.fox.AutoRepair.AutoRepair{
 		AutoLeap = DistributedValue.Create("AutoLeap");
 		AutoChest = DistributedValue.Create("AutoOpenChests");
 		LootBox = DistributedValue.Create("lootBox_window");
+		AutoUseAnima = DistributedValue.Create("AutoUseAnima");
 	}
 	
 	public function Load(){
-		m_Character = Character.GetClientCharacter();
+		m_Character = Character.GetClientCharacter();	
+		m_Inventory = new Inventory(new ID32(_global.Enums.InvType.e_Type_GC_BackpackContainer, m_Character.GetID().GetInstance()));
 		//revive
 		m_Character.SignalCharacterAlive.Connect(Revived, this);
 		m_Character.SignalCharacterTeleported.Connect(Revived, this);
 		//potions
 		m_Character.SignalStatChanged.Connect(SlotStatChanged, this);
+		m_Character.SignalToggleCombat.Connect(ToggledCombat, this);
 		//teleport
 		DialogIF.SignalShowDialog.Connect(AcceptTeleportBuffer, this);
 		//lootbox
@@ -50,6 +64,7 @@ class com.fox.AutoRepair.AutoRepair{
 		m_Character.SignalCharacterTeleported.Disconnect(Revived, this);
 		//potions
 		m_Character.SignalStatChanged.Disconnect(SlotStatChanged, this);
+		m_Character.SignalToggleCombat.Disconnect(ToggledCombat, this);
 		//teleport
 		DialogIF.SignalShowDialog.Disconnect(AcceptTeleportBuffer, this);
 		//lootbox
@@ -61,6 +76,7 @@ class com.fox.AutoRepair.AutoRepair{
 		AutoBuyPotions.SetValue(config.FindEntry("autobuy", false));
 		AutoLeap.SetValue(config.FindEntry("autoleap", false));
 		AutoChest.SetValue(config.FindEntry("Autochest", false));
+		AutoUseAnima.SetValue(config.FindEntry("AutoUseAnima", false));
 	}
 	
 	public function Deactivate():Archive{
@@ -68,6 +84,7 @@ class com.fox.AutoRepair.AutoRepair{
 		arch.AddEntry("autobuy", AutoBuyPotions.GetValue());
 		arch.AddEntry("autoleap", AutoLeap.GetValue());
 		arch.AddEntry("Autochest", AutoChest.GetValue());
+		arch.AddEntry("AutoUseAnima", AutoUseAnima.GetValue());
 		return arch
 	}
 	
@@ -177,4 +194,94 @@ class com.fox.AutoRepair.AutoRepair{
 			}
 		}
 	}	
+	
+	// Auto Anima Code
+	
+	private function FindAnimaInInventory():Number {		
+		for ( var i:Number = 0; i < m_Inventory.GetMaxItems(); i++ ) {
+			if ( m_Inventory.GetItemAt(i).m_ACGItem.m_TemplateID0 == PURE_ANIMA_ITEM ) { 
+				return i;
+			};
+		}
+		return -1;
+	}
+
+	private function UseAnimaPotion() {
+		if ( AutoUseAnima.GetValue() ) {
+			var slotNo:Number = FindAnimaInInventory();
+			if ( slotNo > 0 ) {
+				Inventory(m_Inventory).UseItem(slotNo);
+			}
+		
+			// if we were successful, no need to check for the next 30 minutes, clear the polling interval and reschedule for 29m 55s later
+			// This will get reset if we leave combat anyway, so this will only matter if you stay in combat for the next 30 minutes.
+			// But at least it will shut off polling for the rest of this combat
+			if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] ) {
+				RescheduleInterval( 1800001 )
+			}
+		}
+	}
+	
+	private function RefreshAnimaBuff() {
+		// run through some logic to prevent wasting anima potions
+		
+		// don't use potions out of combat
+		// This happens sometimes when sprinting through mobs or in defense cases. ToggleCombat fires even though the player isn't actually in combat.
+		if ( ! m_Character.IsInCombat() ) { return;	};
+		
+		// don't use potions if dead (not sure which of these conditionals is actually needed for death)
+		// Actually observed this trigger once when running back in a lair so I suppose we'll keep it
+		if ( m_Character.IsDead() || m_Character.m_BuffList[DEATH_BUFFID] || m_Character.m_InvisibleBuffList[DEATH_BUFFID] ) { return; };
+		
+		// don't use potions if in Agartha (todo: add London, New York, Seoul?)
+		if ( m_Character.GetPlayfieldID() == 5060 ) { return; };
+		
+		// check for sprinting - if "Dismounted" buff not present, don't use
+		if ( IsSprinting() ) { return; };
+		
+		// check for existing anima buff
+		if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] ) {
+			// if we already have the buff, reschedule the polling to a longer interval
+			RescheduleInterval(POLLING_INTERVAL_LONG);
+			return;
+		}	
+		
+		// if we've made it through all of these checks, use an anima
+		UseAnimaPotion();
+	}
+	
+	private function RescheduleInterval(intervalAmount:Number) {
+		clearInterval(BuffPollingInterval);
+		BuffPollingInterval = setInterval(Delegate.create(this, RefreshAnimaBuff), intervalAmount);
+	}
+	
+	private function ToggledCombat(state:Boolean) {
+		// only check for refreshes if option is set, we're entering combat, and inventory contains pure anima
+		if ( AutoUseAnima.GetValue() && state && ( FindAnimaInInventory() > 0 ) ) {
+			// run once on enter combat
+			RefreshAnimaBuff();
+			// start polling 
+			RescheduleInterval(POLLING_INTERVAL_SHORT);	
+		}
+		else {
+			clearInterval(BuffPollingInterval); 
+		}
+	}
+	
+	private function IsSprinting():Boolean {
+		// this checks the invisible buff list for Sprinting I through VI
+		var sprintList;
+		sprintList = [ 7481588, 7758936, 7758937, 7758938, 9114480, 9115262];
+		
+		for ( var item in sprintList ) {
+			if m_Character.m_InvisibleBuffList[sprintList[item]] {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	//private function Debug(str:String) {
+		//com.GameInterface.UtilsBase.PrintChatText("AR: " + str);
+	//}
 }
