@@ -19,6 +19,7 @@ class com.fox.AutoRepair.AutoRepair{
 	private var LootBox:DistributedValue;
 	private var AutoUseAnima:DistributedValue;
 	private var BuffPollingInterval:Number;
+	private var timeout;
 	
 	static var POLLING_INTERVAL_SHORT:Number = 1000; // short polling interval (used when buff not present)
 	static var POLLING_INTERVAL_LONG:Number = 10000; // long polling interval (used when buff is present)
@@ -31,7 +32,7 @@ class com.fox.AutoRepair.AutoRepair{
 		swfRoot.onLoad  = function() { mod.Load(); };
 		swfRoot.onUnload  = function() { mod.Unload();};
 		swfRoot.OnModuleActivated = function(config:Archive) {mod.Activate(config)};
-		swfRoot.OnModuleDeactivated = function() {return mod.Deactivate()};	
+		swfRoot.OnModuleDeactivated = function() {return mod.Deactivate()};
 	}
 	
     public function AutoRepair(swfRoot: MovieClip){
@@ -138,13 +139,19 @@ class com.fox.AutoRepair.AutoRepair{
 	}
 
 	private function OpenBox(key){
+		clearTimeout(timeout);
+		timeout = setTimeout(Delegate.create(this, Setbought), 1000); // used to tell box was opened
 		CharacterBase.SendLootBoxReply(true, key);
 	}
 	
 	private function OpenedBox(){
-		if (AutoChest.GetValue()){
-			LootBox.SetValue(false);
+		if (AutoChest.GetValue() && timeout){
+				LootBox.SetValue(false);
 		}
+	}
+	
+	private function Setbought(){
+		timeout = undefined;
 	}
 	
 	private function OfferedLootbox(items:Array, tokenTypes:Array, boxType:Array, backgroundID:Number){
@@ -213,7 +220,7 @@ class com.fox.AutoRepair.AutoRepair{
 				Inventory(m_Inventory).UseItem(slotNo);
 			}
 		
-			// if we were successful, no need to check for the next 30 minutes, clear the polling interval and reschedule for 29m 55s later
+			// if we were successful, no need to check for the next 30 minutes, clear the polling interval and reschedule for 30m 01s later
 			// This will get reset if we leave combat anyway, so this will only matter if you stay in combat for the next 30 minutes.
 			// But at least it will shut off polling for the rest of this combat
 			if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] ) {
@@ -238,6 +245,12 @@ class com.fox.AutoRepair.AutoRepair{
 		
 		// check for sprinting - if "Dismounted" buff not present, don't use
 		if ( IsSprinting() ) { return; };
+
+		// check for Equal Footing (events, PVP) - if we see this, clear interval until next combat
+		if ( HasEqualFooting() ) { 
+			clearInterval(BuffPollingInterval);
+			return; 
+		};
 		
 		// check for existing anima buff
 		if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] ) {
@@ -280,6 +293,21 @@ class com.fox.AutoRepair.AutoRepair{
 		}
 		return false;
 	}
+	
+	private function HasEqualFooting():Boolean {
+		// check for equal footing buffs, efList contains every one in the game just in case
+		var efList;
+		//         Talos       ?      PVP ------------------------------------------------------------------------------PVP        ?
+		efList = [ 7512032, 7512030, 7512342, 7512343, 7512344, 7512345, 7512347, 7512348, 7512349, 7512350, 7512351, 8475143, 9358379];
+		
+		for ( var item in efList ) {
+			if m_Character.m_BuffList[efList[item]] {
+				return true;
+			}
+		}
+		return false;
+	}
+	 
 	
 	//private function Debug(str:String) {
 		//com.GameInterface.UtilsBase.PrintChatText("AR: " + str);
