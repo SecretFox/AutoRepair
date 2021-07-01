@@ -166,6 +166,7 @@ class com.fox.AutoRepair.AutoRepair{
 						return;
 					}
 					else {
+						com.GameInterface.Chat.SignalShowFIFOMessage.Emit("You are out of dungeon keys.");
 						LootBox.SetValue(false);
 						return;
 					}
@@ -177,6 +178,7 @@ class com.fox.AutoRepair.AutoRepair{
 						return;
 					}
 					else {
+						com.GameInterface.Chat.SignalShowFIFOMessage.Emit("You are out of lair keys.");
 						LootBox.SetValue(false);
 						return;
 					}
@@ -188,6 +190,7 @@ class com.fox.AutoRepair.AutoRepair{
 						return;
 					}
 					else {
+						com.GameInterface.Chat.SignalShowFIFOMessage.Emit("You are out of scenario keys.");
 						LootBox.SetValue(false);
 						return;
 					}
