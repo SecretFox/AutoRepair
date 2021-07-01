@@ -146,7 +146,7 @@ class com.fox.AutoRepair.AutoRepair{
 	
 	private function OpenedBox(){
 		if (AutoChest.GetValue() && timeout){
-				LootBox.SetValue(false);
+			LootBox.SetValue(false);
 		}
 	}
 	
@@ -218,6 +218,7 @@ class com.fox.AutoRepair.AutoRepair{
 			var slotNo:Number = FindAnimaInInventory();
 			if ( slotNo > 0 ) {
 				Inventory(m_Inventory).UseItem(slotNo);
+				com.GameInterface.UtilsBase.PrintChatText("AutoRepair: Using Pure Anima");
 			}
 		
 			// if we were successful, no need to check for the next 30 minutes, clear the polling interval and reschedule for 30m 01s later
