@@ -154,14 +154,23 @@ class com.fox.AutoRepair.AutoRepair{
 		timeout = undefined;
 	}
 	
+	private function CharacterInNYR() {
+		var zone = m_Character.GetPlayfieldID();
+		return ( zone == 5710 || zone == 5715); // SM, E1, and E5 are all 5710, E10 & E17 are 5715
+	}
+	
 	private function OfferedLootbox(items:Array, tokenTypes:Array, boxType:Array, backgroundID:Number){
+		
+		// bail if in NYR and elite key hasn't been used yet
+		if ( CharacterInNYR() && ! m_Character.m_InvisibleBuffList[9125207] ) { return;}
+		
 		if (AutoChest.GetValue()){
 			
 			// Patron Chests
 			for (var i:Number = 0; i < tokenTypes.length; i++){
 				// Dungeon
 				if (tokenTypes[i] == _global.Enums.Token.e_Dungeon_Key) {				
-					if ( m_Character.GetTokens(_global.Enums.Token.e_Dungeon_Key) > 0){
+					if (m_Character.GetTokens(_global.Enums.Token.e_Dungeon_Key) > 0){
 						OpenBox(tokenTypes[i]);
 						return;
 					}
