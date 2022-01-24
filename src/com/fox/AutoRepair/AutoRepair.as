@@ -232,7 +232,7 @@ class com.fox.AutoRepair.AutoRepair{
 	private function UseAnimaPotion() {
 		if ( AutoUseAnima.GetValue() ) {
 			var slotNo:Number = FindAnimaInInventory();
-			if ( slotNo > 0 ) {
+			if ( slotNo >= 0 ) {
 				Inventory(m_Inventory).UseItem(slotNo);
 				com.GameInterface.UtilsBase.PrintChatText("AutoRepair: Using Pure Anima");
 			}
