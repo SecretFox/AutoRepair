@@ -2,6 +2,7 @@
 
 Automatically ~~repairs gear~~ restores anima essence when reviving.  
 Additionally you can...  
+* Disable automatic repairing with `/option AutoRepair false`  
 * Enable automatic Healing Potion buying with `/option AutoBuyPotions true`  
 * Enable automatic Anima Leap confirming with `/option AutoLeap true`  
 * Enable automatic non-cache reward chest looting with `/option AutoOpenChests true`  

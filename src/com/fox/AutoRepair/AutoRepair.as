@@ -1,10 +1,8 @@
 import com.GameInterface.DistributedValue;
-import com.GameInterface.Game.BuffData;
 import com.GameInterface.Game.Character;
 import com.GameInterface.Game.CharacterBase;
 import com.GameInterface.DialogIF;
 import com.GameInterface.Inventory;
-import com.GameInterface.InventoryItem;
 import com.Utils.Archive;
 import com.Utils.LDBFormat;
 import mx.utils.Delegate;
@@ -14,6 +12,7 @@ class com.fox.AutoRepair.AutoRepair{
 	private var m_Character:Character;
 	private var m_Inventory:Inventory;
 	private var AutoBuyPotions:DistributedValue;
+	private var d_AutoRepair:DistributedValue;
 	private var AutoLeap:DistributedValue;
 	private var AutoChest:DistributedValue;
 	private var LootBox:DistributedValue;
@@ -36,6 +35,7 @@ class com.fox.AutoRepair.AutoRepair{
 	}
 	
     public function AutoRepair(swfRoot: MovieClip){
+		d_AutoRepair = DistributedValue.Create("AutoRepair");
 		AutoBuyPotions = DistributedValue.Create("AutoBuyPotions");
 		AutoLeap = DistributedValue.Create("AutoLeap");
 		AutoChest = DistributedValue.Create("AutoOpenChests");
@@ -74,6 +74,7 @@ class com.fox.AutoRepair.AutoRepair{
 	}
 	
 	public function Activate(config:Archive){
+		d_AutoRepair.SetValue(config.FindEntry("autorepair", true));
 		AutoBuyPotions.SetValue(config.FindEntry("autobuy", false));
 		AutoLeap.SetValue(config.FindEntry("autoleap", false));
 		AutoChest.SetValue(config.FindEntry("Autochest", false));
@@ -82,6 +83,7 @@ class com.fox.AutoRepair.AutoRepair{
 	
 	public function Deactivate():Archive{
 		var arch:Archive = new Archive();
+		arch.AddEntry("autorepair", d_AutoRepair.GetValue());
 		arch.AddEntry("autobuy", AutoBuyPotions.GetValue());
 		arch.AddEntry("autoleap", AutoLeap.GetValue());
 		arch.AddEntry("Autochest", AutoChest.GetValue());
@@ -90,9 +92,11 @@ class com.fox.AutoRepair.AutoRepair{
 	}
 	
 	private function Revived(){
-		DialogIF.SignalShowDialog.Connect(AcceptRepair, this);
-		CharacterBase.ClearDeathPenalty();
-		DialogIF.SignalShowDialog.Disconnect(AcceptRepair, this);
+		if (d_AutoRepair.GetValue()){
+			DialogIF.SignalShowDialog.Connect(AcceptRepair, this);
+			CharacterBase.ClearDeathPenalty();
+			DialogIF.SignalShowDialog.Disconnect(AcceptRepair, this);
+		}
 	}
 	private function AcceptRepair(dialog){
 		var safetycheck = dialog["m_Message"].toString().slice(0, 17);

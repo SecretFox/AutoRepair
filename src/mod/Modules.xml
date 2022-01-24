@@ -5,8 +5,8 @@
     flags       = "GMF_CFG_STORE_USER_CONFIG  |GMF_DONT_UNLOAD"
     depth_layer = "Top"
     sub_depth   = "2"
-    variable    = "AutoRepair"
-    criteria    = "AutoRepair &amp;&amp; (guimode &amp; (GUIMODEFLAGS_INPLAY | GUIMODEFLAGS_ENABLEALLGUI))"
+    variable    = "AutoRepair_ModEnabled"
+    criteria    = "AutoRepair_ModEnabled &amp;&amp; (guimode &amp; (GUIMODEFLAGS_INPLAY | GUIMODEFLAGS_ENABLEALLGUI))"
 	config_name = "AutoRepair_Cfg"
   />
 </Root>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?> 
 <Root>
-  <Value name="AutoRepair" value="true" />
+  <Value name="AutoRepair_ModEnabled" value="true" />
   <Archive name="AutoRepair_Cfg" />
 </Root>
