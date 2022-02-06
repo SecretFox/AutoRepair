@@ -24,6 +24,8 @@ class com.fox.AutoRepair.AutoRepair{
 	static var POLLING_INTERVAL_LONG:Number = 10000; // long polling interval (used when buff is present)
 	static var PURE_ANIMA_ITEM:Number = 9271323; // Pure Anima - Supreme Potency (item)
 	static var PURE_ANIMA_BUFF:Number = 9271325; // Pure Anima - Supreme Potency (buff)
+	static var DISTILLED_ANIMA_ITEM:Number = 9271320; // Distilled Anima - Max Health and Attack Rating (item)
+	static var DISTILLED_ANIMA_BUFF:Number = 9271316; // Diestilled Anima - Max Health and Attack Rating (buff)
 	static var DEATH_BUFFID:Number = 9212298; // dead buff id
 
 	public static function main(swfRoot:MovieClip):Void{
@@ -221,8 +223,15 @@ class com.fox.AutoRepair.AutoRepair{
 	// Auto Anima Code
 	
 	private function FindAnimaInInventory():Number {		
+		// Check for Pure Anima		
 		for ( var i:Number = 0; i < m_Inventory.GetMaxItems(); i++ ) {
 			if ( m_Inventory.GetItemAt(i).m_ACGItem.m_TemplateID0 == PURE_ANIMA_ITEM ) { 
+				return i;
+			};
+		}
+		// Attempt to use Distilled Anima (weaker buff) if no Pure Anima is present
+		for ( var i:Number = 0; i < m_Inventory.GetMaxItems(); i++ ) {
+			if ( m_Inventory.GetItemAt(i).m_ACGItem.m_TemplateID0 == DISTILLED_ANIMA_ITEM ) { 
 				return i;
 			};
 		}
@@ -240,7 +249,7 @@ class com.fox.AutoRepair.AutoRepair{
 			// if we were successful, no need to check for the next 30 minutes, clear the polling interval and reschedule for 30m 01s later
 			// This will get reset if we leave combat anyway, so this will only matter if you stay in combat for the next 30 minutes.
 			// But at least it will shut off polling for the rest of this combat
-			if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] ) {
+			if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] || m_Character.m_BuffList[DISTILLED_ANIMA_BUFF] ) {
 				RescheduleInterval( 1800001 )
 			}
 		}
@@ -270,7 +279,7 @@ class com.fox.AutoRepair.AutoRepair{
 		};
 		
 		// check for existing anima buff
-		if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] ) {
+		if ( m_Character.m_BuffList[PURE_ANIMA_BUFF] || m_Character.m_BuffList[DISTILLED_ANIMA_BUFF] ) {
 			// if we already have the buff, reschedule the polling to a longer interval
 			RescheduleInterval(POLLING_INTERVAL_LONG);
 			return;
